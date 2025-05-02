@@ -1,15 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import EventCard from '@/components/EventCard';
 import EventFilters from '@/components/EventFilters';
 import { mockEvents, getUniqueColleges, getUniqueLocations } from '@/lib/mock-data';
 import { Event, FilterOptions } from '@/types/event';
-import { format, isEqual, parseISO } from 'date-fns';
+import { format, isEqual, parseISO, isFuture, isPast } from 'date-fns';
 
-const Index = () => {
+const Events = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [filters, setFilters] = useState<FilterOptions>({
     search: '',
     type: null,
@@ -27,9 +29,18 @@ const Index = () => {
     setEvents(mockEvents);
   }, []);
 
-  // Apply filters whenever events or filters change
+  // Apply filters whenever events, filters, or active tab change
   useEffect(() => {
     let result = [...events];
+    
+    // First filter by tab (upcoming or past)
+    if (activeTab === 'upcoming') {
+      result = result.filter(event => isFuture(new Date(event.date)));
+    } else {
+      result = result.filter(event => isPast(new Date(event.date)));
+    }
+    
+    // Then apply user-selected filters
     
     // Filter by search term
     if (filters.search) {
@@ -68,11 +79,15 @@ const Index = () => {
       });
     }
     
-    // Sort events by date (closest first)
-    result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Sort events by date (closest first for upcoming, most recent first for past)
+    if (activeTab === 'upcoming') {
+      result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    } else {
+      result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
     
     setFilteredEvents(result);
-  }, [events, filters]);
+  }, [events, filters, activeTab]);
 
   return (
     <div className="min-h-screen bg-tech-light-bg">
@@ -80,13 +95,22 @@ const Index = () => {
       
       <main className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-tech-purple to-tech-blue bg-clip-text text-transparent mb-2">
-            College Tech Events
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-tech-purple to-tech-blue bg-clip-text text-transparent mb-2">
+            All Events
           </h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Discover tech talks, hackathons, and workshops happening at colleges across the country.
+            Browse all tech talks, hackathons, and workshops.
           </p>
         </div>
+        
+        <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'upcoming' | 'past')} className="mb-6">
+          <div className="flex justify-center">
+            <TabsList>
+              <TabsTrigger value="upcoming">Upcoming Events</TabsTrigger>
+              <TabsTrigger value="past">Past Events</TabsTrigger>
+            </TabsList>
+          </div>
+        </Tabs>
         
         <EventFilters 
           filters={filters} 
@@ -120,4 +144,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default Events;
